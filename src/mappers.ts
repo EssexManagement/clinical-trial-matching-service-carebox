@@ -172,19 +172,18 @@ function mapPhase(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiR
         paramResources.forEach(paramResource => {
             const phasesParams = (paramResource as Parameters).parameter.filter(parameter => parameter.name === "phase");
             for (const parameter of phasesParams) {
+              if (parameter.valueString && parameter.valueString.length > 0) {
                 const cbPhaseCode = phaseCodeMap.get(parameter.valueString);
                 if (cbPhaseCode == undefined) {
-                    throw new Error("Invalid value of phase");
+                  throw new Error("Invalid value of phase");
                 }
                 if (apiRequest.filter.phases == undefined) {
-                    apiRequest.filter.phases = [];
+                  apiRequest.filter.phases = [];
                 }
                 apiRequest.filter.phases.push(cbPhaseCode);
+              }
             }
         });
-    }
-    else {
-        console.log("FHIR Bundle: missing Parameters resource. Can't extract phase filter");
     }
 }
 
