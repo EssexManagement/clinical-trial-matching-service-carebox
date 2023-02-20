@@ -1,3 +1,4 @@
+import {ERR_NO_DICT_FOR_SYS_CODE} from "./errors";
 
 export const FHIR_RESOURCES = {
     Parameters: "Parameters",
@@ -28,5 +29,12 @@ export const dictByFhirSystemMap = new Map<string, string>([
     ["http://www.nlm.nih.gov/research/umls/rxnorm", "Rxnorm"],
     ["http://www.genenames.org", "Hugo"]
 ]);
+export function getDictionaryBySystemCode(systemCode: string) {
+    const medDict = dictByFhirSystemMap.get(systemCode);
+    if (!medDict) {
+        throw new Error(ERR_NO_DICT_FOR_SYS_CODE + systemCode);
+    }
+    return medDict;
+}
 
 export const LOINC_GENE_STUDIED_ID_HGNC = "48018-6"

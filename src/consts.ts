@@ -13,6 +13,7 @@ export const CB_SORT_ORDER = "asc";
 
 export const CB_API_FIRST_PAGE_NUMBER = 1;
 export const CB_API_DEFAULT_PAGE_SIZE = 25;
+export const CB_API_MAX_PAGE_SIZE = 50;
 
 export const DIRECT_MATCH_SERVICE_PATH = "/v2.1/trials/directMatch"
 export const ELIGIBILITY_LOOKUP_SERVICE_PATH = "/v2.1/lookups/eligibilityFields"

@@ -11,7 +11,7 @@ import {
     MappingFunc
 } from "./types";
 import {
-    dictByFhirSystemMap,
+    getDictionaryBySystemCode,
     FHIR_RESOURCES,
     LOINC_GENE_STUDIED_ID_HGNC,
     META_PROFILE_BIO_MARKERS,
@@ -48,6 +48,11 @@ import {
     Patient
 } from "fhir/r4";
 import {CbAPIQuery} from "./query";
+import {
+    ERR_INVALID_PHASE,
+    ERR_NO_API_REQ_EXISTS,
+    ERR_NOT_VALID_KARNOFSKY_VAL
+} from "./errors";
 
 
 export function generateApiQuery(filterByCountry: string, pageSize: number) : CbApiRequest{
@@ -60,7 +65,7 @@ export function generateApiQuery(filterByCountry: string, pageSize: number) : Cb
         field: CB_SORT_FIELD,
         order: CB_SORT_ORDER
     }];
-    let defaultCountries = [];
+    const defaultCountries = [];
     if (filterByCountry) {
         defaultCountries.push(filterByCountry);
     }
@@ -70,15 +75,15 @@ export function generateApiQuery(filterByCountry: string, pageSize: number) : Cb
 }
 
 export function convertFhirBundleToApiRequest(patientBundle: Bundle, apiRequest: CbApiRequest){
-    const mappingFuncMap = new Array<MappingFunc>(mapAge, mapPhase, mapCondition, mapSubTypes, mapBiMarkers, mapECOG, mapDrugs, mapMetastasis, mapDistance, mapStage);
+    const mappingFuncMap = new Array<MappingFunc>(mapAge, mapPhase, mapCondition, mapSubTypes, mapBioMarkers, mapECOG, mapDrugs, mapMetastasis, mapDistance, mapStage);
     const fhirResourceMap = new Map<string, FhirResource[]>();
 
-    if(apiRequest == undefined) {
-        throw new Error("No API Request object exists to fill");
+    if(!apiRequest) {
+        throw new Error(ERR_NO_API_REQ_EXISTS);
     }
 
     patientBundle.entry.forEach(bundleEntry => {
-        let resource = bundleEntry.resource;
+        const resource = bundleEntry.resource;
         if(resource) {
             if(!fhirResourceMap.has(bundleEntry.resource.resourceType)){
                 fhirResourceMap.set(bundleEntry.resource.resourceType,[bundleEntry.resource]);
@@ -152,12 +157,12 @@ function mapAge(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiReq
             birthDate = splitDate[2] + splitDate[1] + splitDate[0];
         }
         const categoryData = categoriesMap.get(CATEGORY_AGE);
-        let eItem: CbEligibilityFields = {
+        const eItem: CbEligibilityFields = {
             fieldId: categoryData.id,
             mode: categoryData.mode,
             value: birthDate,
         };
-        (apiRequest.filter.eligibility == undefined) ?
+        (!apiRequest.filter.eligibility) ?
             apiRequest.filter.eligibility = [eItem] : apiRequest.filter.eligibility.push(eItem);
     }
     else {
@@ -169,44 +174,39 @@ function mapPhase(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiR
 
     const paramResources = fhirResources.get(FHIR_RESOURCES.Parameters);
     if(paramResources) {
+
+
         paramResources.forEach(paramResource => {
             const phasesParams = (paramResource as Parameters).parameter.filter(parameter => parameter.name === "phase");
             for (const parameter of phasesParams) {
-              if (parameter.valueString && parameter.valueString.length > 0) {
-                const cbPhaseCode = phaseCodeMap.get(parameter.valueString);
-                if (cbPhaseCode == undefined) {
-                  throw new Error("Invalid value of phase");
+                if (parameter.valueString && parameter.valueString.length > 0) {
+                    const cbPhaseCode = phaseCodeMap.get(parameter.valueString);
+                    if (!cbPhaseCode) {
+                        throw new Error(ERR_INVALID_PHASE);
+                    }
+                    if (!apiRequest.filter.phases) {
+                        apiRequest.filter.phases = [];
+                    }
+                    apiRequest.filter.phases.push(cbPhaseCode);
                 }
-                if (apiRequest.filter.phases == undefined) {
-                  apiRequest.filter.phases = [];
-                }
-                apiRequest.filter.phases.push(cbPhaseCode);
-              }
             }
         });
     }
 }
 
-
 function mapCondition(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiRequest) {
 
     const condResources = fhirResources.get(FHIR_RESOURCES.Condition);
     if(condResources) {
-
         const condResource = condResources.find(condResource => {
-            return (condResource.meta && condResource.meta.profile && condResource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_CONDITION)) != -1);
+            return condResource.meta?.profile?.some(elem => elem.includes(META_PROFILE_CONDITION));
         }) as Condition;
 
         if(condResource) {
             for (const coding of condResource.code.coding) {
-                const medDict = dictByFhirSystemMap.get(coding.system);
-                if (medDict == undefined) {
-                    throw new Error(`Cannot find dictionary mapping for system code ${coding.system}`);
-                }
                 apiRequest.filter.condition = {
-                    valueId: coding.code,
-                    valueSetId: dictByFhirSystemMap.get(coding.system),
-
+                    valueSetId: getDictionaryBySystemCode(coding.system),
+                    valueId: coding.code
                 };
             }
         }
@@ -224,34 +224,31 @@ function mapSubTypes(fhirResources: Map<string, FhirResource[]>, apiRequest: CbA
     const condResources = fhirResources.get(FHIR_RESOURCES.Condition);
     if(condResources) {
         const subTypeResource = condResources.find(condResource => {
-            return (condResource.meta && condResource.meta.profile && condResource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_CONDITION)) != -1);
+            return condResource?.meta?.profile?.some(elem => elem.includes(META_PROFILE_CONDITION));
         }) as Condition;
 
-        if(subTypeResource && subTypeResource.extension) {
+        if(subTypeResource?.extension?.length > 0) {
             const categoryData = categoriesMap.get(CATEGORY_DIAGNOSIS);
-            let subTypeItem: CbEligibilityFields = {
+            const subTypeItem: CbEligibilityFields = {
                 fieldId: categoryData.id,
                 mode: categoryData.mode,
                 values: []
             };
-            for (const extn of subTypeResource.extension) {
-                if(extn.url && extn.url.includes(META_PROFILE_HISTOLOGY_MORPHOLOGY))
-                {
-                    for (const coding of extn.valueCodeableConcept.coding) {
-                        const medDict = dictByFhirSystemMap.get(coding.system);
-                        if (medDict == undefined) {
-                            throw new Error(`Cannot find dictionary mapping for system code ${coding.system}`);
-                        }
-                        let subValue: CbValueFields = {
-                            valueId: coding.code,
-                            valueSetId: medDict
-                        };
-                        subTypeItem.values.push(subValue);
 
-                    }
-                }
+            const sub = subTypeResource.extension.find(extn => {
+                return extn.url?.includes(META_PROFILE_HISTOLOGY_MORPHOLOGY);
+            });
+            const coding = sub?.valueCodeableConcept?.coding;
+            if(coding?.length > 0) {
+                const codeObj = coding[0];
+                const subValue: CbValueFields = {
+                    valueSetId: getDictionaryBySystemCode(codeObj.system),
+                    valueId: codeObj.code
+                };
+                subTypeItem.values.push(subValue);
             }
-            if (apiRequest.filter.eligibility == undefined) {
+
+            if (!apiRequest.filter.eligibility) {
                 apiRequest.filter.eligibility = [subTypeItem];
             }
             else {
@@ -259,7 +256,7 @@ function mapSubTypes(fhirResources: Map<string, FhirResource[]>, apiRequest: CbA
             }
         }
         else {
-            console.warn("FHIR Bundle: Found Condition Resource: Missing Condition with meta.Profile field: " + META_PROFILE_CONDITION + "or extension field with Sub Type.");
+            console.log("FHIR Bundle: Found Condition Resource: Missing Condition with meta.Profile field: " + META_PROFILE_CONDITION + "or extension field with Sub Type.");
         }
     }
     else {
@@ -267,49 +264,39 @@ function mapSubTypes(fhirResources: Map<string, FhirResource[]>, apiRequest: CbA
     }
 }
 
-function mapBiMarkers(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiRequest) {
+function mapBioMarkers(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiRequest) {
 
     const obsResources = fhirResources.get(FHIR_RESOURCES.Observation);
-    if(obsResources && obsResources.length > 0) {
-        if (apiRequest.filter.eligibility == undefined) {
+    if(obsResources) {
+        if (!apiRequest.filter.eligibility) {
             apiRequest.filter.eligibility = [];
         }
         const categoryData = categoriesMap.get(CATEGORY_BIO_MARKER);
-        let markerItem: CbEligibilityFields = {
+        const markerItem: CbEligibilityFields = {
             fieldId: categoryData.id,
             mode: categoryData.mode,
             values: []
         };
 
+        //For API mapping, get all obs resources that contains Bio Marker profile fields and that the qualifier is positive for the marker
+        //(Reduce may not fit here as we need each found resource, to map its code to our payload)
         const markersResources = obsResources.filter(resource => {
             const obsResource = resource as Observation;
-            const hasMCodeProfile = (obsResource.meta && obsResource.meta.profile && obsResource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_BIO_MARKERS)) != -1);
-            if(!hasMCodeProfile) {
-                return;
-            }
+            const hasMCodeProfile = obsResource?.meta?.profile?.some(elem => elem.includes(META_PROFILE_BIO_MARKERS));
             //Add marker to request only if found positive at the patient
-            let isPositive = true;
+            const isPositive = obsResource.valueCodeableConcept?.coding?.[0]?.display?.includes("Positive")
 
-            if (obsResource.valueCodeableConcept && obsResource.valueCodeableConcept.coding && obsResource.valueCodeableConcept.coding.length > 0) {
-                const vCoding = obsResource.valueCodeableConcept.coding[0];
-                isPositive = vCoding.display ? vCoding.display.indexOf("Positive") != -1 : false;
-            }
-
-            return hasMCodeProfile && isPositive;
+            return hasMCodeProfile && isPositive
         });
 
-        if(markersResources && markersResources.length > 0) {
+        if(markersResources?.length > 0) {
             markersResources.forEach(res => {
                 const codeData = res as Observation;
                 if (codeData.code && codeData.code.coding) {
                     for (const coding of codeData.code.coding) {
-                        const medDict = dictByFhirSystemMap.get(coding.system);
-                        if (medDict == undefined) {
-                            throw new Error(`Cannot find dictionary mapping for system code ${coding.system}`);
-                        }
-                        let obsValue: CbValueFields = {
-                            valueId: coding.code,
-                            valueSetId: medDict
+                        const obsValue: CbValueFields = {
+                            valueSetId: getDictionaryBySystemCode(coding.system),
+                            valueId: coding.code
                         };
                         markerItem.values.push(obsValue);
                     }
@@ -317,52 +304,39 @@ function mapBiMarkers(fhirResources: Map<string, FhirResource[]>, apiRequest: Cb
             });
         }
         else {
-            console.warn("FHIR Bundle: Found Observation Resource: Missing Observation with meta.Profile field: " + META_PROFILE_BIO_MARKERS);
+            console.log("FHIR Bundle: Found Observation Resource: Missing Observation with meta.Profile field: " + META_PROFILE_BIO_MARKERS);
         }
 
         const genomicProfiles = obsResources.filter(resource => {
             const obsResource = resource as Observation;
-            const hasMCodeProfile = (obsResource.meta && obsResource.meta.profile && obsResource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_GENOMIC_VARIANT)) != -1);
-            if(!hasMCodeProfile) {
-                return;
-            }
+            const hasMCodeProfile = obsResource?.meta?.profile?.some(elem => elem.includes(META_PROFILE_GENOMIC_VARIANT));
             //Add marker to request only if found positive at the patient
-            let isPositive = true;
-            if (obsResource.valueCodeableConcept && obsResource.valueCodeableConcept.coding && obsResource.valueCodeableConcept.coding.length > 0) {
-                const vCoding = obsResource.valueCodeableConcept.coding[0];
-                isPositive = vCoding.display ? vCoding.display.indexOf("Present") != -1 : false;
-            }
+            const isPositive = obsResource?.valueCodeableConcept?.coding[0]?.display?.indexOf("Present");
 
             return hasMCodeProfile && isPositive;
         });
 
-        if(genomicProfiles && genomicProfiles.length > 0) {
+        if(genomicProfiles?.length > 0) {
             genomicProfiles.forEach(genResource => {
                 const geneData = genResource as Observation;
                 if (geneData.component) {
                     for (const component of geneData.component) {
-                        if (component.code && component.code.coding.length > 0 && component.code.coding[0].code === LOINC_GENE_STUDIED_ID_HGNC) {
-                            const geneDetails = component.valueCodeableConcept;
-                            if (geneDetails && geneDetails.coding.length > 0) {
-
-                                const medDict = dictByFhirSystemMap.get(geneDetails.coding[0].system);
-                                if (medDict == undefined) {
-                                    throw new Error(`Cannot find dictionary mapping for system code ${geneDetails.coding[0].system}`);
-                                }
-                                let obsValue: CbValueFields = {
-                                    valueId: geneDetails.coding[0].code,
-                                    valueSetId: medDict
+                        if (component.code?.coding[0]?.code === LOINC_GENE_STUDIED_ID_HGNC) {
+                            const geneDetails = component.valueCodeableConcept?.coding[0];
+                            if (geneDetails) {
+                                const obsValue: CbValueFields = {
+                                    valueSetId: getDictionaryBySystemCode(geneDetails.system),
+                                    valueId: geneDetails.code
                                 };
                                 markerItem.values.push(obsValue);
                             }
                         }
-
                     }
                 }
             });
         }
         else {
-            console.warn("FHIR Bundle: Found Observation Resource: Missing Observation with meta.Profile field: " + META_PROFILE_GENOMIC_VARIANT);
+            console.log("FHIR Bundle: Found Observation Resource: Missing Observation with meta.Profile field: " + META_PROFILE_GENOMIC_VARIANT);
         }
 
         if(markerItem.values.length > 0) {
@@ -377,59 +351,52 @@ function mapBiMarkers(fhirResources: Map<string, FhirResource[]>, apiRequest: Cb
 function mapECOG(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiRequest) {
 
     const obsResources = fhirResources.get(FHIR_RESOURCES.Observation);
-    if(obsResources && obsResources.length > 0) {
-
+    if(obsResources) {
         const categoryData = categoriesMap.get(CATEGORY_ECOG);
-        let ecogItem: CbEligibilityFields = {
+        const ecogItem: CbEligibilityFields = {
             fieldId: categoryData.id,
             mode: categoryData.mode,
             values: []
         };
 
-        const ecogProfiles = obsResources.filter(resource => {
-            return (resource.meta && resource.meta.profile && resource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_ECOG)) != -1);
-        });
+        const ecogProfile = obsResources.find(resource => {
+            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_ECOG));
+        }) as Observation;
 
-        const krnfProfiles = obsResources.filter(resource => {
-            return (resource.meta && resource.meta.profile && resource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_KARNOFSKY)) != -1);
-        });
+        const krnfProfile = obsResources.find(resource => {
+            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_KARNOFSKY));
+        }) as Observation;
 
-        if(ecogProfiles && ecogProfiles.length > 0) {
-            ecogProfiles.forEach(res => {
-                const ecogCode = ecogKarnofskyMap.get((res as Observation).valueInteger);
-                let ecogValue: CbValueFields = {
+        if(ecogProfile) {
+            const ecogCode = ecogKarnofskyMap.get(ecogProfile.valueInteger);
+            const ecogValue: CbValueFields = {
+                valueId: ecogCode.code,
+                valueSetId: ECOG_DICT_NAME
+            };
+            ecogItem.values.push(ecogValue);
+        }
+        else {
+            console.log("FHIR Bundle: Found Observation Resource: Missing Observation with meta.Profile field: " + META_PROFILE_ECOG);
+        }
+
+        if(krnfProfile) {
+            const karnofskyCodesList = [...ecogKarnofskyMap.values()];
+            const ecogCode = karnofskyCodesList.find(karn => {
+                return karn.minValue <= krnfProfile.valueInteger && karn.maxValue >= krnfProfile.valueInteger;
+            });
+            if(ecogCode) {
+                const ecogValue: CbValueFields = {
                     valueId: ecogCode.code,
                     valueSetId: ECOG_DICT_NAME
                 };
                 ecogItem.values.push(ecogValue);
-
-            });
+            }
+            else {
+                throw new Error(`${krnfProfile.valueInteger}` + ERR_NOT_VALID_KARNOFSKY_VAL);
+            }
         }
         else {
-            console.warn("FHIR Bundle: Found Observation Resource: Missing Observation with meta.Profile field: " + META_PROFILE_ECOG);
-        }
-
-        if(krnfProfiles && krnfProfiles.length > 0) {
-            const karnofskyCodesList = [...ecogKarnofskyMap.values()];
-            krnfProfiles.forEach(res => {
-                const krnfData = res as Observation;
-                const ecogCode = karnofskyCodesList.find(karn => {
-                    return karn.minValue <= krnfData.valueInteger && karn.maxValue >= krnfData.valueInteger;
-                });
-                if(ecogCode) {
-                    let ecogValue: CbValueFields = {
-                        valueId: ecogCode.code,
-                        valueSetId: ECOG_DICT_NAME
-                    };
-                    ecogItem.values.push(ecogValue);
-                }
-                else {
-                    throw new Error(`karnofsky value ${krnfData.valueInteger} on bundle is not defined in range mapping`);
-                }
-            });
-        }
-        else {
-            console.warn("FHIR Bundle: Found Observation Resource: Missing Observation with meta.Profile field: " + META_PROFILE_KARNOFSKY);
+            console.log("FHIR Bundle: Found Observation Resource: Missing Observation with meta.Profile field: " + META_PROFILE_KARNOFSKY);
         }
 
         if(ecogItem.values.length > 0) {
@@ -445,25 +412,27 @@ function mapDrugs(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiR
 
     const medAdminResources = fhirResources.get(FHIR_RESOURCES.MedicationAdministration);
     const categoryData = categoriesMap.get(CATEGORY_DRUGS);
-    let drugItem: CbEligibilityFields = {
+    const drugItem: CbEligibilityFields = {
         fieldId: categoryData.id,
         mode: categoryData.mode,
         values: []
     };
 
     if(medAdminResources) {
-        const medAdminResource = medAdminResources.find(medResource => {
-            return (medResource.meta && medResource.meta.profile && medResource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_MEDICATION_ADMINISTRATION)) != -1);
-        })  as MedicationAdministration;
+        const medAdminProfiles = medAdminResources.filter(resource => {
+            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_MEDICATION_ADMINISTRATION));
+        });
 
-        if(medAdminResource) {
-            for (const coding of medAdminResource.medicationCodeableConcept.coding) {
-                let drugValue: CbValueFields = {
-                    valueId: coding.code,
-                    valueSetId: dictByFhirSystemMap.get(coding.system)
-                };
-                drugItem.values.push(drugValue);
-            }
+        if(medAdminProfiles?.length > 0) {
+            medAdminProfiles.forEach(res => {
+                for (const coding of (res as MedicationAdministration).medicationCodeableConcept.coding) {
+                    const drugValue: CbValueFields = {
+                        valueSetId: getDictionaryBySystemCode(coding.system),
+                        valueId: coding.code
+                    };
+                    drugItem.values.push(drugValue);
+                }
+            });
         }
         else {
             console.warn("FHIR Bundle: Found MedicationAdministration Resource: Missing MedicationAdministration with meta.Profile field: " + META_PROFILE_MEDICATION_ADMINISTRATION);
@@ -476,19 +445,20 @@ function mapDrugs(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiR
 
     const medResources = fhirResources.get(FHIR_RESOURCES.MedicationRequest);
     if(medResources) {
+        const medReqProfiles = medResources.filter(resource => {
+            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_MEDICATION_REQUEST));
+        });
 
-        const medReqResource = medResources.find(medResource => {
-            return (medResource.meta && medResource.meta.profile && medResource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_MEDICATION_REQUEST)) != -1);
-        })  as MedicationRequest;
-
-        if(medReqResource) {
-            for (const coding of medReqResource.medicationCodeableConcept.coding) {
-                let drugValue: CbValueFields = {
-                    valueId: coding.code,
-                    valueSetId: dictByFhirSystemMap.get(coding.system)
-                };
-                drugItem.values.push(drugValue);
-            }
+        if(medReqProfiles?.length > 0) {
+            medReqProfiles.forEach(res => {
+                for (const coding of (res as MedicationRequest).medicationCodeableConcept.coding) {
+                    const drugValue: CbValueFields = {
+                        valueSetId: getDictionaryBySystemCode(coding.system),
+                        valueId: coding.code
+                    };
+                    drugItem.values.push(drugValue);
+                }
+            });
         }
         else {
             console.warn("FHIR Bundle: Found MedicationRequest Resource: Missing MedicationRequest with meta.Profile field: " + META_PROFILE_MEDICATION_REQUEST);
@@ -507,22 +477,21 @@ function mapMetastasis(fhirResources: Map<string, FhirResource[]>, apiRequest: C
 
     const condResources = fhirResources.get(FHIR_RESOURCES.Condition);
     if(condResources) {
-
         const condResource = condResources.find(resource => {
-            return (resource.meta && resource.meta.profile && resource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_SECONDARY_CONDITION)) != -1);
+            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_SECONDARY_CONDITION));
         })  as Condition;
 
         if(condResource) {
             const categoryData = categoriesMap.get(CATEGORY_METASTASISE);
-            let metasItem: CbEligibilityFields = {
+            const metasItem: CbEligibilityFields = {
                 fieldId: categoryData.id,
                 mode: categoryData.mode,
                 values: []
             };
             for (const coding of condResource.code.coding) {
-                let metasValue: CbValueFields = {
-                    valueId: coding.code,
-                    valueSetId: dictByFhirSystemMap.get(coding.system)
+                const metasValue: CbValueFields = {
+                    valueSetId: getDictionaryBySystemCode(coding.system),
+                    valueId: coding.code
                 };
                 metasItem.values.push(metasValue);
             }
@@ -531,7 +500,7 @@ function mapMetastasis(fhirResources: Map<string, FhirResource[]>, apiRequest: C
             }
         }
         else {
-            console.warn("FHIR Bundle: Found Condition Resource: Missing Condition with meta.Profile field: " + META_PROFILE_SECONDARY_CONDITION);
+            console.log("FHIR Bundle: Found Condition Resource: Missing Condition with meta.Profile field: " + META_PROFILE_SECONDARY_CONDITION);
         }
     }
     else {
@@ -543,23 +512,22 @@ function mapStage(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiR
 
     const obsResources = fhirResources.get(FHIR_RESOURCES.Observation);
     if(obsResources) {
-
         const stageResource = obsResources.find(obsResource => {
-            return (obsResource.meta && obsResource.meta.profile && obsResource.meta.profile.findIndex(elem => elem.includes(META_PROFILE_STAGE_GROUP)) != -1);
+            return obsResource.meta?.profile?.some(elem => elem.includes(META_PROFILE_STAGE_GROUP));
         }) as Observation;
 
         if(stageResource) {
             const categoryData = categoriesMap.get(CATEGORY_METASTASISE);
-            let metasItem: CbEligibilityFields = {
+            const metasItem: CbEligibilityFields = {
                 fieldId: categoryData.id,
                 mode: categoryData.mode,
                 values: []
             };
             for (const coding of stageResource.valueCodeableConcept.coding) {
-                let mets = fhirStageToCbMetsMap.get(coding.code)
-                if(mets != undefined) {
+                const mets = fhirStageToCbMetsMap.get(coding.code)
+                if(mets) {
                     for (const met of mets) {
-                        let metasValue: CbValueFields = {
+                        const metasValue: CbValueFields = {
                             valueId: met,
                         };
                         metasItem.values.push(metasValue);

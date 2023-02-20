@@ -59,9 +59,14 @@ export interface CbValueFields {
 export interface CbApiResponse extends Record<string, unknown> {
     total: number;
     trials: CbTrial[];
+    unusedFieldValues?: CbUnused[];
 }
 
-
+export interface CbUnused {
+    valueId: string;
+    valueSetId?: string;
+    fieldId: string;
+}
 export interface CbCategory {
     id: string;
     name?: string;

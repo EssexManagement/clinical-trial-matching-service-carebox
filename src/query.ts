@@ -16,7 +16,7 @@ import {CbApiRequest, CbApiResponse, CbFilterFields, CbSortFields, CbTrial} from
 import {getAuthToken, getMatches} from "./apiClient";
 import {
   CB_API_DEFAULT_PAGE_SIZE,
-  CB_API_FIRST_PAGE_NUMBER,
+  CB_API_FIRST_PAGE_NUMBER, CB_API_MAX_PAGE_SIZE,
   HTTP_STATUS_UNPROCESSABLE_ENTITY,
 } from "./consts";
 import {importUsZipFile, US_ZIPCODES_FILE, zipCodeToLatLngMapping} from "./zip";
@@ -61,12 +61,10 @@ export async function createClinicalTrialLookup(
   ): Promise<SearchSet> {
     return getAuthToken(configuration).then(async resToken => {
       let bearerToken = resToken;
+      const defaultCountryFilter = configuration.filter_by_country ? configuration.filter_by_country : null;
+      const pageSize = configuration.page_size ? Math.min(parseInt(configuration.page_size), CB_API_MAX_PAGE_SIZE) : CB_API_DEFAULT_PAGE_SIZE;
 
       // Create the query based on the patient bundle:
-      const configPageSize = configuration.page_size ? parseInt(configuration.page_size) : -1;
-      const pageSize = configPageSize > 0 ? configPageSize : CB_API_DEFAULT_PAGE_SIZE;
-      const defaultCountryFilter = configuration.filter_by_country ? configuration.filter_by_country : null;
-
       const queryRequest = generateApiQuery(defaultCountryFilter, pageSize);
       convertFhirBundleToApiRequest(patientBundle, queryRequest);
 
@@ -133,7 +131,7 @@ export class CbAPIQuery implements CbApiRequest {
   page: number = CB_API_FIRST_PAGE_NUMBER;
   pageSize: number = CB_API_DEFAULT_PAGE_SIZE;
   fields: string[] = []; //The names of the fields to be returned for each matching trial
-  filter: CbFilterFields = {condition: undefined};
+  filter: CbFilterFields = {condition: null};
   sort: CbSortFields[] = [];
 
   toString(): string {
@@ -218,6 +216,10 @@ function sendQuery(
             const totalTrialsToReturn = maxResultsToReturn && parseInt(maxResultsToReturn) > 0 && parseInt(maxResultsToReturn) < response.data.total ? maxResultsToReturn : response.data.total
             totalPages = totalTrialsToReturn / cbApiRequest.pageSize;
             fullResponse.total = response.data.total;
+
+            if(response.data.unusedFieldValues && response.data.unusedFieldValues.length > 0) {
+              console.log("API returned unused Fields list as follows: " + JSON.stringify(response.data.unusedFieldValues));
+            }
           }
           fullResponse.trials = fullResponse.trials.concat(response.data.trials);
         } else {

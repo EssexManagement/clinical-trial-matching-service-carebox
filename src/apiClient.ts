@@ -44,7 +44,7 @@ export async function getEligibilityCategories(configuration: QueryConfiguration
 
         const response = await axios.request(options);
         console.log("getEligibilityCategories response: " + JSON.stringify(response.data));
-        return response.data ? response.data.fields : undefined;
+        return response.data ? response.data.fields : null;
     }
     catch (error) {
         console.log("getEligibilityCategories failed: " + error);

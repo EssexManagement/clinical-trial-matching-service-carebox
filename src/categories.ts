@@ -22,9 +22,10 @@ export const categoriesMap = new Map<string, CbCategory>([
     ["Diagnosis", { id: "19", mode: ""}]
 ]);
 
+//Categories Constants   (In future version may refactor to map of {profileUrl: CategoryName} as part of other new features)
 export const CATEGORY_AGE = "Age";
 export const CATEGORY_BIO_MARKER = "Biomarkers";
 export const CATEGORY_ECOG = "ECOG Performance status";
 export const CATEGORY_DRUGS = "Drugs";
 export const CATEGORY_DIAGNOSIS = "Diagnosis";
-export const CATEGORY_METASTASISE = "Metastasise";
+export const CATEGORY_METASTASISE = "Metastasise"; //Name typing is defined to fit to same name typing on Carebox' DB
