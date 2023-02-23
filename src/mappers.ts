@@ -53,6 +53,7 @@ import {
     ERR_NO_API_REQ_EXISTS,
     ERR_NOT_VALID_KARNOFSKY_VAL
 } from "./errors";
+import {getCbMarkerStatusByQualifierCodes} from "./bioMarker";
 
 
 export function generateApiQuery(filterByCountry: string, pageSize: number) : CbApiRequest{
@@ -282,22 +283,26 @@ function mapBioMarkers(fhirResources: Map<string, FhirResource[]>, apiRequest: C
         //(Reduce may not fit here as we need each found resource, to map its code to our payload)
         const markersResources = obsResources.filter(resource => {
             const obsResource = resource as Observation;
-            const hasMCodeProfile = obsResource?.meta?.profile?.some(elem => elem.includes(META_PROFILE_BIO_MARKERS));
-            //Add marker to request only if found positive at the patient
-            const isPositive = obsResource.valueCodeableConcept?.coding?.[0]?.display?.includes("Positive")
-
-            return hasMCodeProfile && isPositive
+            return obsResource?.meta?.profile?.some(elem => elem.includes(META_PROFILE_BIO_MARKERS));
         });
 
         if(markersResources?.length > 0) {
             markersResources.forEach(res => {
                 const codeData = res as Observation;
+                //Add status indication (if found positive at the patient)
+                let mStatus = getCbMarkerStatusByQualifierCodes(codeData.interpretation?.[0].coding?.[0]);
+                if(!mStatus) {
+                    mStatus = getCbMarkerStatusByQualifierCodes(codeData.valueCodeableConcept?.coding?.[0]);
+                }
                 if (codeData.code && codeData.code.coding) {
                     for (const coding of codeData.code.coding) {
                         const obsValue: CbValueFields = {
                             valueSetId: getDictionaryBySystemCode(coding.system),
                             valueId: coding.code
                         };
+                        if(mStatus) {
+                            obsValue.status = mStatus;
+                        }
                         markerItem.values.push(obsValue);
                     }
                 }
@@ -309,25 +314,31 @@ function mapBioMarkers(fhirResources: Map<string, FhirResource[]>, apiRequest: C
 
         const genomicProfiles = obsResources.filter(resource => {
             const obsResource = resource as Observation;
-            const hasMCodeProfile = obsResource?.meta?.profile?.some(elem => elem.includes(META_PROFILE_GENOMIC_VARIANT));
-            //Add marker to request only if found positive at the patient
-            const isPositive = obsResource?.valueCodeableConcept?.coding[0]?.display?.indexOf("Present");
-
-            return hasMCodeProfile && isPositive;
+            return obsResource?.meta?.profile?.some(elem => elem.includes(META_PROFILE_GENOMIC_VARIANT));
         });
 
         if(genomicProfiles?.length > 0) {
             genomicProfiles.forEach(genResource => {
                 const geneData = genResource as Observation;
-                if (geneData.component) {
+                //Add status indication (if found positive at the patient)
+                //interpretation contains positive / negative qualifier.
+                //valueCodeableConcept contains Present / Absent
+                let mStatus = getCbMarkerStatusByQualifierCodes(geneData.interpretation?.[0].coding?.[0]);
+                if(!mStatus) {
+                    mStatus = getCbMarkerStatusByQualifierCodes(geneData.valueCodeableConcept?.coding?.[0]);
+                }
+                if (geneData?.component) {
                     for (const component of geneData.component) {
                         if (component.code?.coding[0]?.code === LOINC_GENE_STUDIED_ID_HGNC) {
                             const geneDetails = component.valueCodeableConcept?.coding[0];
                             if (geneDetails) {
                                 const obsValue: CbValueFields = {
                                     valueSetId: getDictionaryBySystemCode(geneDetails.system),
-                                    valueId: geneDetails.code
+                                    valueId: geneDetails.code,
                                 };
+                                if(mStatus) {
+                                    obsValue.status = mStatus
+                                }
                                 markerItem.values.push(obsValue);
                             }
                         }
