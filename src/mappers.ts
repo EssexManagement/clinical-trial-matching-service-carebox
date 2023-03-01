@@ -334,7 +334,7 @@ function mapBioMarkers(fhirResources: Map<string, FhirResource[]>, apiRequest: C
                             if (geneDetails) {
                                 const obsValue: CbValueFields = {
                                     valueSetId: getDictionaryBySystemCode(geneDetails.system),
-                                    valueId: geneDetails.code,
+                                    valueId: geneDetails.code
                                 };
                                 if(mStatus) {
                                     obsValue.status = mStatus
