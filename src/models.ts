@@ -47,13 +47,14 @@ export interface CbFromFields {
 export interface CbEligibilityFields {
     fieldId: string;
     mode?: string;
-    value?: string
+    value?: string;
     values?: CbValueFields[];
 }
 
 export interface CbValueFields {
     valueSetId?: string;
     valueId: string;
+    status?: string;
 }
 
 export interface CbApiResponse extends Record<string, unknown> {
