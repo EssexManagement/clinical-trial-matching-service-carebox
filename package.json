@@ -4,10 +4,9 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "build": "npm run-script build:ts && npm run-script copy:csv",
+    "build": "npm run-script build:ts",
     "build:tests": "tsc --build tsconfig.test.json",
     "build:ts": "tsc",
-    "copy:csv": "cp ./data/* ./dist/",
     "coverage": "npm run-script build:tests && nyc --require ts-node/register --reporter=lcovonly jasmine",
     "coverage:html": "npm run-script build:tests && nyc --require ts-node/register --reporter=html jasmine",
     "lint": "eslint . --ext .js,.ts",

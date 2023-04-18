@@ -12,7 +12,7 @@ export type UsZip = {
 };
 
 export const zipCodeToLatLngMapping = new Map<string, UsZip>(); //Loaded dynamically based on csv file
-export const US_ZIPCODES_FILE = "../data/uszips.csv";
+export const US_ZIPCODES_FILE = "../../data/uszips.csv";
 
 
 export function importUsZipFile(filePath: string, mapping: Map<string, UsZip>){
