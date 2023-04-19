@@ -4,6 +4,8 @@ import {
     CbValueFields
 } from "./models";
 import {
+    CB_CLINICAL_ITEM_RADIATION,
+    CB_CLINICAL_ITEM_SURGERY,
     CB_SORT_FIELD,
     CB_SORT_ORDER,
 } from "./consts";
@@ -23,7 +25,9 @@ import {
     META_PROFILE_MEDICATION_ADMINISTRATION,
     META_PROFILE_MEDICATION_REQUEST,
     META_PROFILE_SECONDARY_CONDITION,
-    META_PROFILE_STAGE_GROUP
+    META_PROFILE_STAGE_GROUP,
+    META_PROFILE_SURGICAL_PROCEDURE,
+    META_PROFILE_RADIOTHERAPY
 } from "./fhir-resources";
 import {zipCodeToLatLngMapping} from "./zip";
 import {
@@ -32,7 +36,8 @@ import {
     CATEGORY_BIO_MARKER,
     CATEGORY_DIAGNOSIS,
     CATEGORY_DRUGS, CATEGORY_ECOG,
-    CATEGORY_METASTASISE
+    CATEGORY_METASTASISE,
+    CATEGORY_PRIOR_MODALITIES
 } from "./categories";
 import {ECOG_DICT_NAME, ecogKarnofskyMap} from "./ecog";
 import {phaseCodeMap} from "./phase";
@@ -45,7 +50,8 @@ import {
     MedicationRequest,
     Observation,
     Parameters,
-    Patient
+    Patient,
+    Procedure
 } from "fhir/r4";
 import {CbAPIQuery} from "./query";
 import {
@@ -76,7 +82,7 @@ export function generateApiQuery(filterByCountry: string, pageSize: number) : Cb
 }
 
 export function convertFhirBundleToApiRequest(patientBundle: Bundle, apiRequest: CbApiRequest){
-    const mappingFuncMap = new Array<MappingFunc>(mapAge, mapPhase, mapCondition, mapSubTypes, mapBioMarkers, mapECOG, mapDrugs, mapMetastasis, mapDistance, mapStage);
+    const mappingFuncMap = new Array<MappingFunc>(mapAge, mapPhase, mapCondition, mapSubTypes, mapBioMarkers, mapECOG, mapDrugs, mapMetastasis, mapDistance, mapStage, mapProcedure);
     const fhirResourceMap = new Map<string, FhirResource[]>();
 
     if(!apiRequest) {
@@ -557,6 +563,45 @@ function mapStage(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiR
     }
     else {
         console.log("FHIR Bundle: missing Observation resource. Can't extract Stage filter");
+    }
+}
+
+function mapProcedure(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiRequest) {
+
+    const procResources = fhirResources.get(FHIR_RESOURCES.Procedure);
+    if(procResources) {
+        const surgeryResource = procResources.find(resource => {
+            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_SURGICAL_PROCEDURE));
+        })  as Procedure;
+
+        const radioResource = procResources.find(resource => {
+            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_RADIOTHERAPY));
+        })  as Procedure;
+
+
+        if(surgeryResource || radioResource) {
+            const categoryData = categoriesMap.get(CATEGORY_PRIOR_MODALITIES);
+            const procItem: CbEligibilityFields = {
+                fieldId: categoryData.id,
+                mode: categoryData.mode,
+                values: []
+            };
+            if(surgeryResource) {
+                procItem.values.push({
+                    valueId: CB_CLINICAL_ITEM_SURGERY,
+                });
+            }
+            if(radioResource) {
+                procItem.values.push({
+                    valueId: CB_CLINICAL_ITEM_RADIATION,
+                });
+            }
+            apiRequest.filter.eligibility.push(procItem);
+
+        }
+        else {
+            console.log("FHIR Bundle: Found Procedure Resource: Missing Procedure with meta.Profile: " + META_PROFILE_SURGICAL_PROCEDURE + " or meta.Profile: " + META_PROFILE_RADIOTHERAPY);
+        }
     }
 }
 

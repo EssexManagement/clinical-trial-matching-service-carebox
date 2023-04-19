@@ -7,6 +7,7 @@ export const FHIR_RESOURCES = {
     Observation: "Observation",
     MedicationAdministration: "MedicationAdministration",
     MedicationRequest: "MedicationRequest",
+    Procedure: "Procedure",
 }
 
 //Under http://hl7.org/fhir/us/mcode/StructureDefinition/ the following profiles defined.
@@ -18,8 +19,10 @@ export const META_PROFILE_SECONDARY_CONDITION = "mcode-secondary-cancer-conditio
 export const META_PROFILE_MEDICATION_ADMINISTRATION = "mcode-cancer-related-medication-administration";
 export const META_PROFILE_MEDICATION_REQUEST = "mcode-cancer-related-medication-request";
 export const META_PROFILE_HISTOLOGY_MORPHOLOGY = "mcode-histology-morphology-behavior";
-export const META_PROFILE_GENOMIC_VARIANT = "mcode-genomic-variant"
-export const META_PROFILE_STAGE_GROUP = "mcode-cancer-stage-group"
+export const META_PROFILE_GENOMIC_VARIANT = "mcode-genomic-variant";
+export const META_PROFILE_STAGE_GROUP = "mcode-cancer-stage-group";
+export const META_PROFILE_SURGICAL_PROCEDURE = "mcode-cancer-related-surgical-procedure";
+export const META_PROFILE_RADIOTHERAPY = "mcode-radiotherapy-course-summary";
 
 
 export const dictByFhirSystemMap = new Map<string, string>([
