@@ -29,3 +29,4 @@ export const CATEGORY_ECOG = "ECOG Performance status";
 export const CATEGORY_DRUGS = "Drugs";
 export const CATEGORY_DIAGNOSIS = "Diagnosis";
 export const CATEGORY_METASTASISE = "Metastasise"; //Name typing is defined to fit to same name typing on Carebox' DB
+export const CATEGORY_PRIOR_MODALITIES = "Prior modalities";
