@@ -17,12 +17,12 @@ export const META_PROFILE_ECOG = "mcode-ecog-performance-status";
 export const META_PROFILE_KARNOFSKY = "mcode-karnofsky-performance-status";
 export const META_PROFILE_SECONDARY_CONDITION = "mcode-secondary-cancer-condition"; //Used for Metastasis
 export const META_PROFILE_MEDICATION_ADMINISTRATION = "mcode-cancer-related-medication-administration";
-export const META_PROFILE_MEDICATION_REQUEST = "mcode-cancer-related-medication-request";
+export const META_PROFILE_MEDICATION_REQUEST = "mcode-cancer-related-medication-statement";
 export const META_PROFILE_HISTOLOGY_MORPHOLOGY = "mcode-histology-morphology-behavior";
 export const META_PROFILE_GENOMIC_VARIANT = "mcode-genomic-variant";
-export const META_PROFILE_STAGE_GROUP = "mcode-cancer-stage-group";
+export const META_PROFILE_STAGE_GROUP = "mcode-tnm-clinical-stage-group";
 export const META_PROFILE_SURGICAL_PROCEDURE = "mcode-cancer-related-surgical-procedure";
-export const META_PROFILE_RADIOTHERAPY = "mcode-radiotherapy-course-summary";
+export const META_PROFILE_RADIOTHERAPY = "mcode-cancer-related-radiation-procedure";
 
 
 export const dictByFhirSystemMap = new Map<string, string>([
