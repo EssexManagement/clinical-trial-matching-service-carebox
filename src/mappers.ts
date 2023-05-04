@@ -22,8 +22,7 @@ import {
     META_PROFILE_GENOMIC_VARIANT,
     META_PROFILE_HISTOLOGY_MORPHOLOGY,
     META_PROFILE_KARNOFSKY,
-    META_PROFILE_MEDICATION_ADMINISTRATION,
-    META_PROFILE_MEDICATION_REQUEST,
+    META_PROFILE_MEDICATION_STATEMENT,
     META_PROFILE_SECONDARY_CONDITION,
     META_PROFILE_STAGE_GROUP,
     META_PROFILE_SURGICAL_PROCEDURE,
@@ -46,8 +45,7 @@ import {
     Bundle,
     Condition,
     FhirResource,
-    MedicationAdministration,
-    MedicationRequest,
+    MedicationStatement,
     Observation,
     Parameters,
     Patient,
@@ -427,7 +425,7 @@ function mapECOG(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiRe
 
 function mapDrugs(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiRequest) {
 
-    const medAdminResources = fhirResources.get(FHIR_RESOURCES.MedicationAdministration);
+    const medStatementResources = fhirResources.get(FHIR_RESOURCES.MedicationStatement);
     const categoryData = categoriesMap.get(CATEGORY_DRUGS);
     const drugItem: CbEligibilityFields = {
         fieldId: categoryData.id,
@@ -435,14 +433,14 @@ function mapDrugs(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiR
         values: []
     };
 
-    if(medAdminResources) {
-        const medAdminProfiles = medAdminResources.filter(resource => {
-            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_MEDICATION_ADMINISTRATION));
+    if(medStatementResources) {
+        const medStatementProfiles = medStatementResources.filter(resource => {
+            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_MEDICATION_STATEMENT));
         });
 
-        if(medAdminProfiles?.length > 0) {
-            medAdminProfiles.forEach(res => {
-                for (const coding of (res as MedicationAdministration).medicationCodeableConcept.coding) {
+        if(medStatementProfiles?.length > 0) {
+            medStatementProfiles.forEach(res => {
+                for (const coding of (res as MedicationStatement).medicationCodeableConcept.coding) {
                     const drugValue: CbValueFields = {
                         valueSetId: getDictionaryBySystemCode(coding.system),
                         valueId: coding.code
@@ -452,37 +450,12 @@ function mapDrugs(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiR
             });
         }
         else {
-            console.warn("FHIR Bundle: Found MedicationAdministration Resource: Missing MedicationAdministration with meta.Profile field: " + META_PROFILE_MEDICATION_ADMINISTRATION);
+            console.warn("FHIR Bundle: Found MedicationStatement Resource: Missing MedicationStatement with meta.Profile field: " + META_PROFILE_MEDICATION_STATEMENT);
         }
 
     }
     else {
-        console.log("FHIR Bundle: missing MedicationAdministration resource.");
-    }
-
-    const medResources = fhirResources.get(FHIR_RESOURCES.MedicationRequest);
-    if(medResources) {
-        const medReqProfiles = medResources.filter(resource => {
-            return resource.meta?.profile?.some(elem => elem.includes(META_PROFILE_MEDICATION_REQUEST));
-        });
-
-        if(medReqProfiles?.length > 0) {
-            medReqProfiles.forEach(res => {
-                for (const coding of (res as MedicationRequest).medicationCodeableConcept.coding) {
-                    const drugValue: CbValueFields = {
-                        valueSetId: getDictionaryBySystemCode(coding.system),
-                        valueId: coding.code
-                    };
-                    drugItem.values.push(drugValue);
-                }
-            });
-        }
-        else {
-            console.warn("FHIR Bundle: Found MedicationRequest Resource: Missing MedicationRequest with meta.Profile field: " + META_PROFILE_MEDICATION_REQUEST);
-        }
-    }
-    else {
-        console.log("FHIR Bundle: missing MedicationRequest resource.");
+        console.log("FHIR Bundle: missing MedicationStatement resource.");
     }
 
     if(drugItem.values.length > 0) {
