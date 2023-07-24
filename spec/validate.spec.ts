@@ -1,4 +1,4 @@
-import { QueryTrial } from '../src/query';
+import { CbTrial } from '../src/models';
 import convertToResearchStudy from '../src/researchstudy-mapping';
 
 import fs from 'fs';
@@ -18,7 +18,7 @@ describe('FHIR Validation', () => {
           reject(error);
           return;
         }
-        const json: QueryTrial = JSON.parse(data) as QueryTrial;
+        const json: CbTrial = JSON.parse(data) as CbTrial;
         const study = convertToResearchStudy(json, 1);
         const result = fhir.validate(study);
         if (result.messages && result.messages.length > 0) {

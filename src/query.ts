@@ -41,10 +41,10 @@ export interface QueryConfiguration extends ServiceConfiguration {
  *     update the returned trials with additional information pulled from
  *     ClinicalTrials.gov
  */
-export async function createClinicalTrialLookup(
+export function createClinicalTrialLookup(
     configuration: QueryConfiguration,
     ctgService?: ClinicalTrialsGovService
-): Promise<(patientBundle: Bundle) => Promise<SearchSet>> {
+): (patientBundle: Bundle) => Promise<SearchSet> {
   // Raise errors on missing configuration
   if (typeof configuration.endpoint !== "string") {
     throw new Error("Missing endpoint in configuration");
@@ -59,8 +59,7 @@ export async function createClinicalTrialLookup(
   return function getMatchingClinicalTrials(
       patientBundle: Bundle
   ): Promise<SearchSet> {
-    return getAuthToken(configuration).then(async resToken => {
-      let bearerToken = resToken;
+    return getAuthToken(configuration).then(async authToken => {
       const defaultCountryFilter = configuration.filter_by_country ? configuration.filter_by_country : null;
       const pageSize = configuration.page_size ? Math.min(parseInt(configuration.page_size), CB_API_MAX_PAGE_SIZE) : CB_API_DEFAULT_PAGE_SIZE;
 
@@ -69,7 +68,7 @@ export async function createClinicalTrialLookup(
       convertFhirBundleToApiRequest(patientBundle, queryRequest);
 
       // And send the query to the server
-      return sendQuery(endpoint, queryRequest, bearerToken, configuration.max_results_returned, ctgService);
+      return await sendQuery(endpoint, queryRequest, authToken, configuration.max_results_returned, ctgService);
     });
   };
 }
@@ -119,6 +118,8 @@ export class APIError extends Error {
     message: string, httpStatus: number, body: string
   ) {
     super(message);
+    this.httpStatus = httpStatus;
+    this.body = body;
   }
 }
 
@@ -195,66 +196,64 @@ export function convertResponseToSearchSet(
  *     update the returned trials with additional information pulled from
  *     ClinicalTrials.gov
  */
-function sendQuery(
+async function sendQuery(
   endpoint: string,
   cbApiRequest: CbAPIQuery,
   bearerToken: string,
   maxResultsToReturn?: string,
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
-  return new Promise(async (resolve, reject) => {
-    let currentPage = 0;
-    let totalPages = 1;
-    let fullResponse: CbApiResponse = {total: 0, trials: []}
-    try {
-      do {
-        cbApiRequest.page = ++currentPage;
-        const response = await getMatches(endpoint, bearerToken, cbApiRequest);
-        console.log(`Matcher API Page # ${cbApiRequest.page} result Status: ${JSON.stringify(response.status)}`);
-        if (response.status === 200) {
-          if(currentPage === 1) { //On first run, update received total and calculated number of pages to retrieve
-            const totalTrialsToReturn = maxResultsToReturn && parseInt(maxResultsToReturn) > 0 && parseInt(maxResultsToReturn) < response.data.total ? maxResultsToReturn : response.data.total
-            totalPages = totalTrialsToReturn / cbApiRequest.pageSize;
-            fullResponse.total = response.data.total;
+  let currentPage = 0;
+  let totalPages = 1;
+  const maxResults = maxResultsToReturn ? parseInt(maxResultsToReturn) : 0;
+  const fullResponse: CbApiResponse = {total: 0, trials: []}
+  try {
+    do {
+      cbApiRequest.page = ++currentPage;
+      const response = await getMatches(endpoint, bearerToken, cbApiRequest);
+      console.log(`Matcher API Page # ${cbApiRequest.page} result Status: ${JSON.stringify(response.status)}`);
+      if (response.status === 200) {
+        if(currentPage === 1) { //On first run, update received total and calculated number of pages to retrieve
+          const totalTrialsToReturn = maxResults > 0 ? Math.min(maxResults, response.data.total) : response.data.total;
+          totalPages = totalTrialsToReturn / cbApiRequest.pageSize;
+          fullResponse.total = response.data.total;
 
-            if(response.data.unusedFieldValues && response.data.unusedFieldValues.length > 0) {
-              console.log("API returned unused Fields list as follows: " + JSON.stringify(response.data.unusedFieldValues));
-            }
+          if(response.data.unusedFieldValues && response.data.unusedFieldValues.length > 0) {
+            console.log("API returned unused Fields list as follows: " + JSON.stringify(response.data.unusedFieldValues));
           }
-          fullResponse.trials = fullResponse.trials.concat(response.data.trials);
-        } else {
-              reject(
-              new APIError(
-                  response.data.toString(),
-                  response.status,
-                  response.data.toString()
-              )
-          );
         }
-      } while (currentPage < totalPages);
+        fullResponse.trials = fullResponse.trials.concat(response.data.trials);
+      } else {
+        throw new APIError(
+            response.data.toString(),
+            response.status,
+            response.data.toString()
+        );
+      }
+    } while (currentPage < totalPages);
 
 
-      console.log(`Complete getting all match pages`);
-      if (isCbResponse(fullResponse)) {
-        console.log("Matcher API response: Total = " + fullResponse.total + " Current retrieved amount: " + fullResponse.trials.length);
-        resolve(convertResponseToSearchSet(fullResponse, ctgService));
-      } else {
-        reject(new APIError(
-            "Unable to parse response from server",
-            HTTP_STATUS_UNPROCESSABLE_ENTITY,
-            fullResponse
-        ));
-      }
+    console.log(`Complete getting all match pages`);
+    if (isCbResponse(fullResponse)) {
+      console.log(`Matcher API response: Total = ${fullResponse.total} Current retrieved amount: ${fullResponse.trials.length}`);
+      return convertResponseToSearchSet(fullResponse, ctgService);
+    } else {
+      throw new APIError(
+          "Unable to parse response from server",
+          HTTP_STATUS_UNPROCESSABLE_ENTITY,
+          fullResponse
+      );
     }
-    catch (e) {
-      console.log("getMatches failed: " + e);
-      if(isAxiosError(e)) {
-        reject(new APIError(e.message, e.response.status, e.response.data.toString()));
-      } else {
-        reject(new APIError(e.message, HTTP_STATUS_UNPROCESSABLE_ENTITY, e))
-      }
+  }
+  catch (e: unknown) {
+    console.log(`getMatches failed: ${e.toString()}`);
+    if(isAxiosError(e)) {
+      throw new APIError(e.message, e.response.status, e.response.data.toString());
+    } else {
+      const message = typeof e === 'object' && 'message' in e && typeof e.message === 'string' ? e.message : e.toString();
+      throw new APIError(message, HTTP_STATUS_UNPROCESSABLE_ENTITY, '');
     }
-  });
+  }
 }
 
 export function isAxiosError(e: unknown): e is AxiosError {
