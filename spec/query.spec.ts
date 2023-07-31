@@ -9,14 +9,14 @@ import {
   ResearchStudy,
   SearchSet,
 } from "clinical-trial-matching-service";
+import { CbTrial } from '../src/models';
 import createClinicalTrialLookup, {
   convertResponseToSearchSet,
   isQueryTrial,
   isQueryResponse,
   isQueryErrorResponse,
-  APIQuery,
+  CbAPIQuery,
   QueryResponse,
-  QueryTrial,
 } from "../src/query";
 import nock from "nock";
 
@@ -90,7 +90,7 @@ describe("isQueryErrorResponse()", () => {
 
 describe("APIQuery", () => {
   it("extracts passed properties", () => {
-    const query = new APIQuery({
+    const query = new CbAPIQuery({
       resourceType: "Bundle",
       type: "collection",
       entry: [

@@ -5,7 +5,6 @@
 
 import {CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL, ResearchStudy} from 'clinical-trial-matching-service';
 import {cbStatusToResearchStudyStatusMap} from "./consts";
-import {ResearchStudyStatus} from "clinical-trial-matching-service/dist/fhir-types";
 import {CbTrial} from "./models";
 import {cbPhaseToFhirCodeMap} from "./phase";
 
@@ -26,7 +25,7 @@ export function convertToResearchStudy(trial: CbTrial, id: number): ResearchStud
   }
 
   if (trial.phase) {
-    let phaseCode = cbPhaseToFhirCodeMap.get(trial.phase.phaseId)
+    const phaseCode = cbPhaseToFhirCodeMap.get(trial.phase.phaseId)
     result.phase = {
       coding: [
         {
@@ -40,7 +39,7 @@ export function convertToResearchStudy(trial: CbTrial, id: number): ResearchStud
   }
 
   if(trial.status && cbStatusToResearchStudyStatusMap.has(trial.status.statusId)) {
-      result.status = cbStatusToResearchStudyStatusMap.get(trial.status.statusId) as ResearchStudyStatus;
+      result.status = cbStatusToResearchStudyStatusMap.get(trial.status.statusId) as typeof result['status'];
   }
 
   if(trial.sites && trial.sites.length > 0) {

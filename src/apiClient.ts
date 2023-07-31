@@ -3,10 +3,10 @@
 /// @param configuration the configuration to use to configure the request
 import axios from "axios";
 import {CbAPIQuery, QueryConfiguration} from "./query";
+import {CbApiResponse} from "./models";
 import {DIRECT_MATCH_SERVICE_PATH, ELIGIBILITY_LOOKUP_SERVICE_PATH} from "./consts";
 
-export async function getAuthToken(configuration: QueryConfiguration) {
-
+export async function getAuthToken(configuration: QueryConfiguration): Promise<string> {
     try {
         const options = {
             method: 'POST',
@@ -19,12 +19,12 @@ export async function getAuthToken(configuration: QueryConfiguration) {
             })
         };
 
-        const response = await axios.request(options);
+        const response = await axios.request<{ access_token: string }>(options);
         console.log("getAuthToken response: " + JSON.stringify(response.data));
         return response.data.access_token;
     }
-    catch (error) {
-        throw new Error("getAuthToken failed: " + error);
+    catch (error: unknown) {
+        throw new Error(`getAuthToken failed: ${error?.toString() ?? 'unknown error'}`);
     }
 
 }
@@ -42,13 +42,14 @@ export async function getEligibilityCategories(configuration: QueryConfiguration
             }
         };
 
-        const response = await axios.request(options);
+        const response = await axios.request<{fields: unknown}>(options);
         console.log("getEligibilityCategories response: " + JSON.stringify(response.data));
         return response.data ? response.data.fields : null;
     }
-    catch (error) {
-        console.log("getEligibilityCategories failed: " + error);
-        throw new Error("getEligibilityCategories failed: " + error);
+    catch (error: unknown) {
+        const message = error?.toString() ?? 'unknown error';
+        console.log('getEligibilityCategories failed: ' + message);
+        throw new Error("getEligibilityCategories failed: " + message);
     }
 }
 
@@ -65,6 +66,6 @@ export async function getMatches(endpoint: string, bearerToken: string, cbApiReq
         data: cbApiRequest.toString()
     };
 
-    return axios.request(options);
+    return axios.request<CbApiResponse>(options);
 
 }

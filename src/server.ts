@@ -42,7 +42,7 @@ export default async function startServer(
   const ctgService = await createClinicalTrialsGovService(
     path.resolve(__dirname, "../ctgov-cache")
   );
-  const getMatchingClinicalTrials = await createClinicalTrialLookup(
+  const getMatchingClinicalTrials = createClinicalTrialLookup(
     configuration,
     ctgService
   );
