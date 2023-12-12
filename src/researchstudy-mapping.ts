@@ -42,34 +42,6 @@ export function convertToResearchStudy(trial: CbTrial, id: number): ResearchStud
       result.status = cbStatusToResearchStudyStatusMap.get(trial.status.statusId) as typeof result['status'];
   }
 
-  if(trial.sites && trial.sites.length > 0) {
-    result.location = [];
-    trial.sites.forEach(site => {
-
-      const loc = result.addSite(site.siteName)
-      if(site.coordinates) {
-        loc.position = { latitude: site.coordinates.lat, longitude: site.coordinates.lon };
-      }
-      if (site.zipCode) {
-        loc.address = {
-          use: 'work',
-          postalCode: site.zipCode,
-          city: site.city,
-          country: site.countryName
-        };
-        if(site.stateCode) {
-          loc.address.state = site.stateCode
-        }
-      }
-      if(site.contacts && site.contacts.length > 0) {
-        site.contacts.forEach(contact => {
-          result.addContact(contact.contactName,contact.phoneNumber, contact.email);
-        })
-      }
-      result.location.push({ text: site.countryName });
-    })
-  }
-
   if (trial.overallContacts && trial.overallContacts.length > 0) {
     {
       trial.overallContacts.forEach(contact => {
