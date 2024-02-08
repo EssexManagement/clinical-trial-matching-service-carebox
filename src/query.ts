@@ -121,6 +121,10 @@ export class APIError extends Error {
     this.httpStatus = httpStatus;
     this.body = body;
   }
+
+  toString(): string {
+    return `APIError: ${this.message} (HTTP ${this.httpStatus})`;
+  }
 }
 
 /**
@@ -248,7 +252,8 @@ async function sendQuery(
   catch (e: unknown) {
     console.log(`getMatches failed: ${e.toString()}`);
     if(isAxiosError(e)) {
-      throw new APIError(e.message, e.response.status, e.response.data.toString());
+      console.log('Request failed: %o', e.response.data);
+      throw new APIError(e.message, e.response.status, JSON.stringify(e.response.data));
     } else {
       const message = typeof e === 'object' && 'message' in e && typeof e.message === 'string' ? e.message : e.toString();
       throw new APIError(message, HTTP_STATUS_UNPROCESSABLE_ENTITY, '');
