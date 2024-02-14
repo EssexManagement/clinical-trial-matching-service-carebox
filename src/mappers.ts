@@ -28,7 +28,6 @@ import {
     META_PROFILE_SURGICAL_PROCEDURE,
     META_PROFILE_RADIOTHERAPY
 } from "./fhir-resources";
-import {zipCodeToLatLngMapping} from "./zip";
 import {
     categoriesMap,
     CATEGORY_AGE,
@@ -51,14 +50,21 @@ import {
     Patient,
     Procedure
 } from "fhir/r4";
-import {CbAPIQuery} from "./query";
+import {APIError, CbAPIQuery} from "./query";
 import {
     ERR_INVALID_PHASE,
     ERR_NO_API_REQ_EXISTS,
     ERR_NOT_VALID_KARNOFSKY_VAL
 } from "./errors";
 import {getCbMarkerStatusByQualifierCodes} from "./bioMarker";
+import data from 'us-zips';
 
+
+export function convertZip(zipCode: string): number[] {
+    const point = data[zipCode] || null;
+  
+    return point == null ? [null, null] : [point['latitude'], point['longitude']];
+}
 
 export function generateApiQuery(filterByCountry: string, pageSize: number) : CbApiRequest{
 
@@ -113,22 +119,28 @@ export function mapDistance(fhirResources: Map<string, FhirResource[]>, apiReque
         const radiusParam = paramResource.parameter.find(parameter => parameter.name === "travelRadius");
 
         if(zipParam) {
-            const cbLatLong = zipCodeToLatLngMapping.get(zipParam.valueString);
-            const latValue = parseFloat(cbLatLong.lat);
-            const longValue = parseFloat(cbLatLong.lng);
+            const latLng = convertZip(zipParam.valueString);
+            if (latLng[0] == null) {
+                throw new APIError(
+                    "Invalid zip code -- could not be processed into latitude and longitude",
+                    400,
+                    "Invalid zip code -- could not be processed into latitude and longitude"
+                );
+            }
+
             apiRequest.filter.distance = {
                 distance: parseFloat(radiusParam.valueString),
                 distanceUnit: "mi",
                 from: {
-                    lat: latValue,
-                    lon: longValue
+                    lat: latLng[0],
+                    lon: latLng[1]
                 }
             };
             //Set same value under origin field
             apiRequest.origin = {
                 from: {
-                    lat: latValue,
-                    lon: longValue
+                    lat: latLng[0],
+                    lon: latLng[1]
                 }
             };
         }

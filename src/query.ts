@@ -19,9 +19,9 @@ import {
   CB_API_FIRST_PAGE_NUMBER, CB_API_MAX_PAGE_SIZE,
   HTTP_STATUS_UNPROCESSABLE_ENTITY,
 } from "./consts";
-import {importUsZipFile, US_ZIPCODES_FILE, zipCodeToLatLngMapping} from "./zip";
 import {AxiosError} from "axios";
 import {Bundle} from "fhir/r4";
+
 
 export interface QueryConfiguration extends ServiceConfiguration {
   endpoint?: string;
@@ -54,7 +54,6 @@ export function createClinicalTrialLookup(
   }
 
   const endpoint = configuration.endpoint;
-  importUsZipFile(US_ZIPCODES_FILE, zipCodeToLatLngMapping);
 
   return function getMatchingClinicalTrials(
       patientBundle: Bundle
@@ -224,6 +223,7 @@ async function sendQuery(
         }
         fullResponse.trials = fullResponse.trials.concat(response.data.trials);
       } else {
+        console.log("Response", response.data);
         throw new APIError(
             response.data.toString(),
             response.status,
@@ -246,6 +246,7 @@ async function sendQuery(
     }
   }
   catch (e: unknown) {
+    console.log("Error", e);
     console.log(`getMatches failed: ${e.toString()}`);
     if(isAxiosError(e)) {
       throw new APIError(e.message, e.response.status, e.response.data.toString());
