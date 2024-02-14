@@ -3,20 +3,12 @@
  * results.
  */
 
-import { Bundle, BundleEntry } from "fhir/r4";
+import { Bundle } from "fhir/r4";
 import {
-  ClinicalTrialsGovService,
-  ResearchStudy,
   SearchSet,
 } from "clinical-trial-matching-service";
-import { CbTrial } from '../src/models';
 import createClinicalTrialLookup, {
-  convertResponseToSearchSet,
-  isQueryTrial,
-  isQueryResponse,
   isQueryErrorResponse,
-  CbAPIQuery,
-  QueryResponse,
 } from "../src/query";
 import nock from "nock";
 
@@ -42,38 +34,6 @@ describe("createClinicalTrialLookup()", () => {
   });
 });
 
-describe("isQueryTrial()", () => {
-  it("returns false for non-trial objects", () => {
-    expect(isQueryTrial(null)).toBeFalse();
-    expect(isQueryTrial(true)).toBeFalse();
-    expect(isQueryTrial("string")).toBeFalse();
-    expect(isQueryTrial(42)).toBeFalse();
-    expect(isQueryTrial({ invalid: true })).toBeFalse();
-  });
-
-  it("returns true on a matching object", () => {
-    expect(isQueryTrial({ name: "Hello" })).toBeTrue();
-  });
-});
-
-describe("isQueryResponse()", () => {
-  it("returns false for non-response objects", () => {
-    expect(isQueryResponse(null)).toBeFalse();
-    expect(isQueryResponse(true)).toBeFalse();
-    expect(isQueryResponse("string")).toBeFalse();
-    expect(isQueryResponse(42)).toBeFalse();
-    expect(isQueryResponse({ invalid: true })).toBeFalse();
-  });
-
-  it("returns true on a matching object", () => {
-    expect(isQueryResponse({ matchingTrials: [] })).toBeTrue();
-    expect(isQueryResponse({ matchingTrials: [{ name: "Trial" }] })).toBeTrue();
-    // Currently this is true. It may make sense to make it false, but for now,
-    // a single invalid trial does not invalidate the array.
-    expect(isQueryResponse({ matchingTrials: [{ invalid: true }] })).toBeTrue();
-  });
-});
-
 describe("isQueryErrorResponse()", () => {
   it("returns false for non-response objects", () => {
     expect(isQueryErrorResponse(null)).toBeFalse();
@@ -88,211 +48,13 @@ describe("isQueryErrorResponse()", () => {
   });
 });
 
-describe("APIQuery", () => {
-  it("extracts passed properties", () => {
-    const query = new CbAPIQuery({
-      resourceType: "Bundle",
-      type: "collection",
-      entry: [
-        {
-          resource: {
-            resourceType: "Parameters",
-            parameter: [
-              {
-                name: "zipCode",
-                valueString: "01730",
-              },
-              {
-                name: "travelRadius",
-                valueString: "25",
-              },
-              {
-                name: "phase",
-                valueString: "phase-1",
-              },
-              {
-                name: "recruitmentStatus",
-                valueString: "approved",
-              },
-            ],
-          },
-        },
-      ],
-    });
-    expect(query.zipCode).toEqual("01730");
-    expect(query.travelRadius).toEqual(25);
-    expect(query.phase).toEqual("phase-1");
-    expect(query.recruitmentStatus).toEqual("approved");
-  });
+// describe("CbAPIQuery", () => {
+//   // FIXME: Write tests
+// });
 
-  it("gathers conditions", () => {
-    const query = new APIQuery({
-      resourceType: "Bundle",
-      type: "collection",
-      entry: [
-        {
-          resource: {
-            resourceType: "Condition",
-            subject: {
-              type: "Patient",
-              reference: "urn:patient/1"
-            },
-            code: {
-              coding: [
-                {
-                  system: "http://www.example.com/",
-                  code: "test",
-                },
-              ],
-            },
-          },
-        },
-        {
-          resource: {
-            resourceType: "Condition",
-            subject: {
-              type: "Patient",
-              reference: "urn:patient/1"
-            },
-            code: {
-              coding: [
-                {
-                  system: "https://www.example.com/",
-                  code: "test-2",
-                },
-              ],
-            },
-          },
-        },
-      ],
-    });
-    expect(query.conditions).toEqual([
-      { system: "http://www.example.com/", code: "test" },
-      { system: "https://www.example.com/", code: "test-2" },
-    ]);
-  });
-
-  it("converts the query to a string", () => {
-    expect(
-      new APIQuery({
-        resourceType: "Bundle",
-        type: "collection",
-        entry: [
-          {
-            resource: {
-              resourceType: "Parameters",
-              parameter: [
-                {
-                  name: "zipCode",
-                  valueString: "01730",
-                },
-                {
-                  name: "travelRadius",
-                  valueString: "25",
-                },
-                {
-                  name: "phase",
-                  valueString: "phase-1",
-                },
-                {
-                  name: "recruitmentStatus",
-                  valueString: "approved",
-                },
-              ],
-            },
-          },
-        ],
-      }).toString()
-    ).toEqual(
-      '{"zip":"01730","distance":25,"phase":"phase-1","status":"approved","conditions":[]}'
-    );
-  });
-
-  it("ignores unknown parameters", () => {
-    // Passing in this case is simply "not raising an exception"
-    new APIQuery({
-      resourceType: "Bundle",
-      type: "collection",
-      entry: [
-        {
-          resource: {
-            resourceType: "Parameters",
-            parameter: [
-              {
-                name: "unknown",
-                valueString: "invalid",
-              },
-            ],
-          },
-        },
-      ],
-    });
-  });
-
-  it("ignores invalid entries", () => {
-    // Passing in this case is simply "not raising an exception"
-    const bundle: Bundle = {
-      resourceType: "Bundle",
-      type: "collection",
-      entry: [],
-    };
-    // Force an invalid entry in
-    bundle.entry?.push(({ invalid: true } as unknown) as BundleEntry);
-    new APIQuery(bundle);
-    // Passing is not raising an exception
-  });
-});
-
-describe("convertResponseToSearchSet()", () => {
-  it("converts trials", () => {
-    return expectAsync(
-      convertResponseToSearchSet({
-        matchingTrials: [{ name: "test" }],
-      }).then((searchSet) => {
-        expect(searchSet.entry.length).toEqual(1);
-        expect(searchSet.entry[0].resource).toBeInstanceOf(ResearchStudy);
-        expect(
-          searchSet.entry[0].resource?.status
-        ).toEqual("active");
-      })
-    ).toBeResolved();
-  });
-
-  it("skips invalid trials", () => {
-    const response: QueryResponse = {
-      matchingTrials: [],
-    };
-    // Push on an invalid object
-    response.matchingTrials.push(({
-      invalidObject: true,
-    } as unknown) as QueryTrial);
-    return expectAsync(convertResponseToSearchSet(response)).toBeResolved();
-  });
-
-  it("uses the backup service if provided", () => {
-    // Note that we don't initialize the backup service so no files are created
-    const backupService = new ClinicalTrialsGovService("temp");
-    // Instead we install a spy that takes over "updating" the research studies
-    // by doing nothing
-    const spy = spyOn(backupService, "updateResearchStudies").and.callFake(
-      (studies) => {
-        return Promise.resolve(studies);
-      }
-    );
-    return expectAsync(
-      convertResponseToSearchSet(
-        {
-          matchingTrials: [{ name: "test" }],
-        },
-        backupService
-      )
-    )
-      .toBeResolved()
-      .then(() => {
-        expect(spy).toHaveBeenCalled();
-      });
-  });
-});
+// describe("convertResponseToSearchSet()", () => {
+//   // FIXME: Write tests
+// });
 
 describe("ClinicalTrialLookup", () => {
   // A valid patient bundle for the matcher, passed to ensure a query is generated

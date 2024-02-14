@@ -225,9 +225,9 @@ async function sendQuery(
       } else {
         console.log("Response", response.data);
         throw new APIError(
-            response.data.toString(),
+            JSON.stringify(response.data),
             response.status,
-            response.data.toString()
+            JSON.stringify(response.data)
         );
       }
     } while (currentPage < totalPages);
@@ -249,9 +249,9 @@ async function sendQuery(
     console.log("Error", e);
     console.log(`getMatches failed: ${e.toString()}`);
     if(isAxiosError(e)) {
-      throw new APIError(e.message, e.response.status, e.response.data.toString());
+      throw new APIError(e.message, e.response.status, JSON.stringify(e.response.data));
     } else {
-      const message = typeof e === 'object' && 'message' in e && typeof e.message === 'string' ? e.message : e.toString();
+      const message = typeof e === 'object' && 'message' in e && typeof e.message === 'string' ? e.message : 'unknown error';
       throw new APIError(message, HTTP_STATUS_UNPROCESSABLE_ENTITY, '');
     }
   }
