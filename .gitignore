@@ -17,5 +17,5 @@
 .DS_Store
 Thumbs.db
 
-# Ignore ctgov-cache
-/ctgov-cache
+# Ignore default ClinicalTrials.gov cache file
+/ctgov-cache.db
