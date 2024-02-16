@@ -153,7 +153,7 @@ export class CbAPIQuery implements CbApiRequest {
  *     update the returned trials with additional information pulled from
  *     ClinicalTrials.gov
  */
-export function convertResponseToSearchSet(
+export async function convertResponseToSearchSet(
   response: CbApiResponse,
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
@@ -170,22 +170,13 @@ export function convertResponseToSearchSet(
       return Promise.reject(new Error("Unable to parse trial from server: " + JSON.stringify(trial)));
     }
   }
-  try {
-    if (ctgService) {
-      // If given a backup service, use it
-      return ctgService.updateResearchStudies(studies).then(() => {
-        return new SearchSet(studies);
-      }, (reason) => {
-        return Promise.reject(reason);
-      });
-    } else {
-      // Otherwise, resolve immediately
-      return Promise.resolve(new SearchSet(studies));
-    }
-  } catch (e) {
-    return Promise.reject(e);
+  if (ctgService) {
+    // If given a backup service, use it
+    return new SearchSet(await ctgService.updateResearchStudies(studies));
+  } else {
+    // Otherwise, resolve immediately
+    return new SearchSet(studies);
   }
-
 }
 
 /**
