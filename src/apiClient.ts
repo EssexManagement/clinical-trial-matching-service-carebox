@@ -22,9 +22,9 @@ export async function getAuthToken(configuration: QueryConfiguration): Promise<s
         const response = await axios.request<{ access_token: string }>(options);
         console.log("getAuthToken response: " + JSON.stringify(response.data));
         return response.data.access_token;
-    }
-    catch (error: unknown) {
-        throw new Error(`getAuthToken failed: ${error?.toString() ?? 'unknown error'}`);
+    } catch (error: unknown) {
+      const message = (error as Error)?.message ?? 'unknown error';
+      throw new Error(`getAuthToken failed: ${message}`);
     }
 
 }
@@ -47,7 +47,7 @@ export async function getEligibilityCategories(configuration: QueryConfiguration
         return response.data ? response.data.fields : null;
     }
     catch (error: unknown) {
-        const message = error?.toString() ?? 'unknown error';
+        const message = (error as Error)?.message ?? 'unknown error';
         console.log('getEligibilityCategories failed: ' + message);
         throw new Error("getEligibilityCategories failed: " + message);
     }

@@ -19,9 +19,9 @@ import {
   CB_API_FIRST_PAGE_NUMBER, CB_API_MAX_PAGE_SIZE,
   HTTP_STATUS_UNPROCESSABLE_ENTITY,
 } from "./consts";
-import {importUsZipFile, US_ZIPCODES_FILE, zipCodeToLatLngMapping} from "./zip";
 import {AxiosError} from "axios";
 import {Bundle} from "fhir/r4";
+
 
 export interface QueryConfiguration extends ServiceConfiguration {
   endpoint?: string;
@@ -54,7 +54,6 @@ export function createClinicalTrialLookup(
   }
 
   const endpoint = configuration.endpoint;
-  importUsZipFile(US_ZIPCODES_FILE, zipCodeToLatLngMapping);
 
   return function getMatchingClinicalTrials(
       patientBundle: Bundle
@@ -219,10 +218,11 @@ async function sendQuery(
         }
         fullResponse.trials = fullResponse.trials.concat(response.data.trials);
       } else {
+        console.log("Response", response.data);
         throw new APIError(
-            response.data.toString(),
+            JSON.stringify(response.data),
             response.status,
-            response.data.toString()
+            JSON.stringify(response.data)
         );
       }
     } while (currentPage < totalPages);
@@ -241,12 +241,11 @@ async function sendQuery(
     }
   }
   catch (e: unknown) {
-    console.log(`getMatches failed: ${e.toString()}`);
+    console.log('getMatches failed: %o', e);
     if(isAxiosError(e)) {
-      console.log('Request failed: %o', e.response.data);
       throw new APIError(e.message, e.response.status, JSON.stringify(e.response.data));
     } else {
-      const message = typeof e === 'object' && 'message' in e && typeof e.message === 'string' ? e.message : e.toString();
+      const message = typeof e === 'object' && 'message' in e && typeof e.message === 'string' ? e.message : 'unknown error';
       throw new APIError(message, HTTP_STATUS_UNPROCESSABLE_ENTITY, '');
     }
   }
