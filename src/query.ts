@@ -21,7 +21,9 @@ import {
 } from "./consts";
 import {AxiosError} from "axios";
 import {Bundle} from "fhir/r4";
+import { debuglog } from "node:util";
 
+const logger = debuglog('carebox');
 
 export interface QueryConfiguration extends ServiceConfiguration {
   endpoint?: string;
@@ -207,7 +209,8 @@ async function sendQuery(
       const response = await getMatches(endpoint, bearerToken, cbApiRequest);
       console.log(`Matcher API Page # ${cbApiRequest.page} result Status: ${JSON.stringify(response.status)}`);
       if (response.status === 200) {
-        if(currentPage === 1) { //On first run, update received total and calculated number of pages to retrieve
+        if (currentPage === 1) {
+          // On first run, update received total and calculated number of pages to retrieve
           const totalTrialsToReturn = maxResults > 0 ? Math.min(maxResults, response.data.total) : response.data.total;
           totalPages = totalTrialsToReturn / cbApiRequest.pageSize;
           fullResponse.total = response.data.total;
@@ -228,7 +231,7 @@ async function sendQuery(
     } while (currentPage < totalPages);
 
 
-    console.log(`Complete getting all match pages`);
+    logger(`Complete getting all match pages`);
     if (isCbResponse(fullResponse)) {
       console.log(`Matcher API response: Total = ${fullResponse.total} Current retrieved amount: ${fullResponse.trials.length}`);
       return convertResponseToSearchSet(fullResponse, ctgService);
@@ -239,10 +242,15 @@ async function sendQuery(
           fullResponse
       );
     }
-  }
-  catch (e: unknown) {
-    console.log('getMatches failed: %o', e);
-    if(isAxiosError(e)) {
+  } catch (e: unknown) {
+    logger('getMatches failed: %o', e);
+    if (isAxiosError(e)) {
+      if (e.response) {
+        console.log('Error response from server: %d %s', e.response.status, e.response.statusText);
+        console.log('Server error is: %j', e.response.data);
+      } else {
+        console.error('Unknown error from server: %o', e);
+      }
       throw new APIError(e.message, e.response.status, JSON.stringify(e.response.data));
     } else {
       const message = typeof e === 'object' && 'message' in e && typeof e.message === 'string' ? e.message : 'unknown error';
