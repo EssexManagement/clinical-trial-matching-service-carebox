@@ -2,7 +2,7 @@
 
 Mediator Server, sending queries to the Carebox Clinical Trials Matching API.
 
-The service is aimed to be run under the UI of clinical-trial-matching-engine  [wiki](https://github.com/mcode/clinical-trial-matching-engine/wiki).
+The service is aimed to be run under the UI of the [clinical-trial-matching-app](https://github.com/mcode/clinical-trial-matching-app/).
 
 It exposes a single API handler: http://localhost:3000/getClinicalTrial
 
@@ -10,7 +10,7 @@ It exposes a single API handler: http://localhost:3000/getClinicalTrial
 
 # Requirements
 
-Node version: The code was tested against version 14.15.5 `
+Node version: The code was tested against version 14.15.5
 
 Credentials: having valid OAUTH2 client_id and client_secret
 
@@ -24,7 +24,7 @@ The ResearchStudy object is a [FHIR-compliant](https://www.hl7.org/fhir/research
 
 ## Configuration:
 
-(Internal use: Clone project from repository [clinical-trial-matching-service-carebox](https://github.com/mcode/clinical-trial-matching-service-carebox)
+Clone project from repository [clinical-trial-matching-service-carebox](https://github.com/mcode/clinical-trial-matching-service-carebox)
 Open `.env` and make sure the configuration matches your environment. If it does not, update the fields accordingly:
 - MATCHING_SERVICE_ENDPOINT - The host of the Carebox API
 - MATCHING_SERVICE_AUTH_SERVER - The host of the Carebox OAUTH server
