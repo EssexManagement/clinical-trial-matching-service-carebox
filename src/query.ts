@@ -233,7 +233,14 @@ async function sendQuery(
 
     logger(`Complete getting all match pages`);
     if (isCbResponse(fullResponse)) {
-      console.log(`Matcher API response: Total = ${fullResponse.total} Current retrieved amount: ${fullResponse.trials.length}`);
+      console.log(
+        `Matcher API response: Total = ${fullResponse.total} Current retrieved amount: ${fullResponse.trials.length}`
+      );
+      console.log(
+        `Matched trials: ${JSON.stringify(
+          fullResponse.trials.map((t) => t.nctId)
+        )}`
+      );
       return convertResponseToSearchSet(fullResponse, ctgService);
     } else {
       throw new APIError(
