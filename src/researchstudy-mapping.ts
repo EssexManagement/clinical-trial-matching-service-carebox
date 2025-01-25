@@ -3,7 +3,10 @@
  * the underlying service to the FHIR ResearchStudy type.
  */
 
-import {CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL, ResearchStudy} from 'clinical-trial-matching-service';
+import {
+  CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL,
+  ResearchStudy,
+} from "@EssexManagement/clinical-trial-matching-service";
 import {cbStatusToResearchStudyStatusMap} from "./consts";
 import {CbTrial} from "./models";
 import {cbPhaseToFhirCodeMap} from "./phase";
