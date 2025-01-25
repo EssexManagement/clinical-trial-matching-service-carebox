@@ -4,7 +4,7 @@ import createClinicalTrialLookup, { QueryConfiguration } from "./query";
 import ClinicalTrialMatchingService, {
   configFromEnv,
   createClinicalTrialsGovService,
-} from "clinical-trial-matching-service";
+} from "@EssexManagement/clinical-trial-matching-service";
 import * as dotenv from "dotenv-flow";
 
 /**

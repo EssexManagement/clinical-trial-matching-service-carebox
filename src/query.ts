@@ -9,7 +9,7 @@ import {
   ServiceConfiguration,
   ResearchStudy,
   SearchSet,
-} from "clinical-trial-matching-service";
+} from "@EssexManagement/clinical-trial-matching-service";
 import convertToResearchStudy from "./researchstudy-mapping";
 import {convertFhirBundleToApiRequest, generateApiQuery} from "./mappers";
 import {CbApiRequest, CbApiResponse, CbFilterFields, CbSortFields, CbTrial} from "./models";

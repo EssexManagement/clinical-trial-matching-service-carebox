@@ -6,7 +6,7 @@
 import { Bundle } from "fhir/r4";
 import {
   SearchSet,
-} from "clinical-trial-matching-service";
+} from "@EssexManagement/clinical-trial-matching-service";
 import createClinicalTrialLookup, {
   isQueryErrorResponse,
 } from "../src/query";
