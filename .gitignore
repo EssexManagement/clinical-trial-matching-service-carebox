@@ -19,3 +19,7 @@ Thumbs.db
 
 # Ignore default ClinicalTrials.gov cache file
 /ctgov-cache.db
+
+# Production files
+iisnode/
+web.config
