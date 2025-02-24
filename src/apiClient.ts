@@ -64,7 +64,7 @@ export async function getMatches(
   bearerToken: string,
   cbApiRequest: CbAPIQuery,
   devCacheClient: DevCacheClientAbs
-): Promise<AxiosResponse<CbApiResponse, any> | DevCacheResponse<CbApiResponse>> {
+): Promise<AxiosResponse<CbApiResponse> | DevCacheResponse<CbApiResponse>> {
   console.log("Send query request to url: " + endpoint);
   console.log("With payload: " + cbApiRequest.toString());
 
@@ -80,7 +80,7 @@ export async function getMatches(
 
   if (devCacheClient instanceof DevCacheClient) {
     const key = options.url + options.data;
-    const cached = await devCacheClient.get(key);
+    const cached = (await devCacheClient.get(key)) as CbApiResponse;
     if (cached) {
       return { data: cached, status: 200 };
     }
