@@ -17,7 +17,7 @@ describe("createClinicalTrialLookup()", () => {
     expect(
       typeof createClinicalTrialLookup({
         endpoint: "http://www.example.com/",
-        auth_token: "token",
+        auth_server: "http://www.example.com/auth",
       })
     ).toEqual("function");
   });
@@ -30,7 +30,7 @@ describe("createClinicalTrialLookup()", () => {
     }).toThrowError("Missing endpoint in configuration");
     expect(() => {
       createClinicalTrialLookup({ endpoint: "http://www.example.com/" });
-    }).toThrowError("Missing auth_token in configuration");
+    }).toThrowError("Missing auth_server in configuration");
   });
 });
 
@@ -66,18 +66,21 @@ describe("ClinicalTrialLookup", () => {
   let matcher: (patientBundle: Bundle) => Promise<SearchSet>;
   let scope: nock.Scope;
   let mockRequest: nock.Interceptor;
+  let mockAuthServer: nock.Interceptor;
   beforeEach(() => {
     // Create the matcher here. This creates a new instance each test so that
     // each test can adjust it as necessary without worrying about interfering
     // with other tests.
     matcher = createClinicalTrialLookup({
       endpoint: "https://www.example.com/endpoint",
-      auth_token: "test_token",
+      auth_server: "https://www.example.com/auth",
     });
     // Create the interceptor for the mock request here as it's the same for
     // each test
     scope = nock("https://www.example.com");
-    mockRequest = scope.post("/endpoint");
+    mockRequest = scope.post("/endpoint/v2.1/trials/directMatch");
+    mockAuthServer = scope.post("/auth");
+    // jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
   });
   afterEach(() => {
     // Expect the endpoint to have been hit in these tests
@@ -85,45 +88,51 @@ describe("ClinicalTrialLookup", () => {
   });
 
   it("generates a request", () => {
-    mockRequest.reply(200, { matchingTrials: [] });
+    mockRequest.reply(200, { trials: [] });
+    mockAuthServer.reply(200, { access_token: 'token' });
     return expectAsync(matcher(patientBundle)).toBeResolved();
   });
 
   it("rejects with an error if an error is returned by the server", () => {
     // Simulate an error response
     mockRequest.reply(200, { error: "Test error" });
+    mockAuthServer.reply(200, { access_token: 'token' });
     return expectAsync(matcher(patientBundle)).toBeRejectedWithError(
-      "Error from service: Test error"
+      /^Unable to parse trial from server:/
     );
   });
 
   it("rejects with an error if an HTTP error is returned by the server", () => {
     // Simulate an error response
     mockRequest.reply(500, "Internal Server Error");
+    mockAuthServer.reply(200, { access_token: 'token' });
     return expectAsync(matcher(patientBundle)).toBeRejectedWithError(
-      /^Server returned 500/
+      /^Request failed with status code 500/
     );
   });
 
   it("rejects with an error if the response is invalid", () => {
     // Simulate a valid response with something that can't be parsed as JSON
     mockRequest.reply(200, { missingAllKnownKeys: true });
+    mockAuthServer.reply(200, { access_token: 'token' });
     return expectAsync(matcher(patientBundle)).toBeRejectedWithError(
-      "Unable to parse response from server"
+      /^Unable to parse trial from server:/
     );
   });
 
   it("rejects with an error if the response is not JSON", () => {
     // Simulate a valid response with something that can't be parsed as JSON
     mockRequest.reply(200, "A string that isn't JSON");
+    mockAuthServer.reply(200, { access_token: 'token' });
     return expectAsync(matcher(patientBundle)).toBeRejectedWithError(
-      "Unable to parse response as JSON"
+      /^Unable to parse trial from server:/
     );
   });
 
   it("rejects with an error if the request fails", () => {
     // Simulate a valid response with something that can't be parsed as JSON
     mockRequest.replyWithError("Test error");
+    mockAuthServer.reply(200, { access_token: 'token' });
     return expectAsync(matcher(patientBundle)).toBeRejectedWithError(
       "Test error"
     );

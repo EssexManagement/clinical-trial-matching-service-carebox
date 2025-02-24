@@ -9,6 +9,7 @@ import {
   ServiceConfiguration,
   ResearchStudy,
   SearchSet,
+  devCacheClientConstructor
 } from "@EssexManagement/clinical-trial-matching-service";
 import convertToResearchStudy from "./researchstudy-mapping";
 import {convertFhirBundleToApiRequest, generateApiQuery} from "./mappers";
@@ -203,10 +204,12 @@ async function sendQuery(
   let totalPages = 1;
   const maxResults = maxResultsToReturn ? parseInt(maxResultsToReturn) : 0;
   const fullResponse: CbApiResponse = {total: 0, trials: []}
+  const devCacheClient = await devCacheClientConstructor();
+  await devCacheClient.connect();
   try {
     do {
       cbApiRequest.page = ++currentPage;
-      const response = await getMatches(endpoint, bearerToken, cbApiRequest);
+      const response = await getMatches(endpoint, bearerToken, cbApiRequest, devCacheClient);
       console.log(`Matcher API Page # ${cbApiRequest.page} result Status: ${JSON.stringify(response.status)}`);
       if (response.status === 200) {
         if (currentPage === 1) {
@@ -230,16 +233,18 @@ async function sendQuery(
       }
     } while (currentPage < totalPages);
 
-
     logger(`Complete getting all match pages`);
     if (isCbResponse(fullResponse)) {
       console.log(
         `Matcher API response: Total = ${fullResponse.total} Current retrieved amount: ${fullResponse.trials.length}`
       );
       console.log(
-        `Matched trials: ${JSON.stringify(
-          fullResponse.trials.map((t) => t.nctId)
-        )}`
+        "Matched trials:",
+        JSON.stringify(
+          fullResponse.trials.map((t) => t?.nctId)
+        ),
+        JSON.stringify(fullResponse.trials[0]),
+        JSON.stringify(fullResponse.trials.at(-1))
       );
       return convertResponseToSearchSet(fullResponse, ctgService);
     } else {
@@ -263,6 +268,8 @@ async function sendQuery(
       const message = typeof e === 'object' && 'message' in e && typeof e.message === 'string' ? e.message : 'unknown error';
       throw new APIError(message, HTTP_STATUS_UNPROCESSABLE_ENTITY, '');
     }
+  } finally {
+    await devCacheClient.quit();
   }
 }
 

@@ -4,6 +4,7 @@ import createClinicalTrialLookup, { QueryConfiguration } from "./query";
 import ClinicalTrialMatchingService, {
   configFromEnv,
   createClinicalTrialsGovService,
+  devCacheActive,
 } from "@EssexManagement/clinical-trial-matching-service";
 import * as dotenv from "dotenv-flow";
 
@@ -36,9 +37,15 @@ export default async function startServer(
     configuration = configFromEnv("MATCHING_SERVICE_");
   }
 
+  if (await devCacheActive()) {
+    console.log("Dev cache is up and running.");
+  }
+
   // Create a ClinicalTrialGovService. It takes a path to a temporary directory
   // that is used to store its cache.
-  const ctgService = await createClinicalTrialsGovService(process.env.CTGOV_CACHE_FILE);
+  const ctgService = await createClinicalTrialsGovService(
+    process.env.CTGOV_CACHE_FILE
+  );
   const getMatchingClinicalTrials = createClinicalTrialLookup(
     configuration,
     ctgService
