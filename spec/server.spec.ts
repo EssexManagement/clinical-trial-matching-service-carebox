@@ -1,11 +1,15 @@
 import startServer from "../src/server";
 import ClinicalTrialMatchingService from "@EssexManagement/clinical-trial-matching-service";
 
+process.env.NODE_ENV = "test";
+
 describe("startServer()", () => {
   beforeEach(() => {
     // Don't actually want to start the server listening, so spy on the
     // prototype to prevent that from happening
-    spyOn(ClinicalTrialMatchingService.prototype, "listen").and.callFake(() => {
+    spyOn(ClinicalTrialMatchingService.prototype, "listen").and.callFake(
+      // @ts-ignore: don't care about the implementation
+      () => {
       // Note: null return works here because the result of service is never
       // actually used in the "real" function
       return null;
@@ -21,7 +25,7 @@ describe("startServer()", () => {
     return expectAsync(
       startServer({
         endpoint: "https://www.example.com/endpoint",
-        auth_token: "fake",
+        auth_server: "https://www.example.com/auth",
         host: "127.0.0.1",
         port: 0,
       }).then((service) => {
