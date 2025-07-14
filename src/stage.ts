@@ -1,3 +1,21 @@
+export const snomedCodeToFhirStageMap = new Map<string, string>([
+  ["258215001", "1"],
+  ["261634002", "1A"],
+  ["261635001", "1B"],
+  ["261636000", "1C"],
+  ["258219007", "2"],
+  ["261614003", "2A"],
+  ["261615002", "2B"],
+  ["261615002", "2C"],
+  ["258224005", "3"],
+  ["261638004", "3A"],
+  ["261639007", "3B"],
+  ["261640009", "3C"],
+  ["258228008", "4"],
+  ["261642001", "4A"],
+  ["261643006", "4B"],
+  ["313046007", "4C"],
+]);
 
 export const fhirStageToCbMetsMap = new Map<string, string[]>([
   ["1", ["1534", "1541", "1554", "1553"]], //Cancer has not spread, Early-stage disease, cancer has not spread, No it has not spread outside of the original location, No it has not spread outside of the eye
@@ -35,17 +53,17 @@ export const fhirStageToCbMetsMap = new Map<string, string[]>([
   ["4A1", ["1539", "1542", "1544", "1546", "1560", "1528", "1530", "1557"]],
   ["4A2", ["1539", "1542", "1544", "1546", "1560", "1528", "1530", "1557"]],
 
-// 1539 Distant lymph nodes
-// 1542 Fluid around the lungs (malignant pleural effusion)
-// 1544 Liver
-// 1546 Lung
-// 1560 Skin
-// 1528 Abdomen
-// 1530 Bone (including vertebrae)
-// 1531 Brain - controlled / asymptomatic or unknown status
-// 1532 Brain - not controlled
-// 1561 Spinal cord - controlled / asymptomatic or unknown status
-// 1562 Spinal cord - not controlled
-// 1543 Leptomeningeal disease
-// 1557 Other (includes other lobes of lung or organ)
+  // 1539 Distant lymph nodes
+  // 1542 Fluid around the lungs (malignant pleural effusion)
+  // 1544 Liver
+  // 1546 Lung
+  // 1560 Skin
+  // 1528 Abdomen
+  // 1530 Bone (including vertebrae)
+  // 1531 Brain - controlled / asymptomatic or unknown status
+  // 1532 Brain - not controlled
+  // 1561 Spinal cord - controlled / asymptomatic or unknown status
+  // 1562 Spinal cord - not controlled
+  // 1543 Leptomeningeal disease
+  // 1557 Other (includes other lobes of lung or organ)
 ]);

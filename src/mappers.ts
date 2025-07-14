@@ -39,7 +39,7 @@ import {
 } from "./categories";
 import {ECOG_DICT_NAME, ecogKarnofskyMap} from "./ecog";
 import {phaseCodeMap} from "./phase";
-import {fhirStageToCbMetsMap} from "./stage";
+import {fhirStageToCbMetsMap, snomedCodeToFhirStageMap} from "./stage";
 import {
     Bundle,
     Condition,
@@ -526,7 +526,11 @@ function mapStage(fhirResources: Map<string, FhirResource[]>, apiRequest: CbApiR
                 values: []
             };
             for (const coding of stageResource.valueCodeableConcept.coding) {
-                const mets = fhirStageToCbMetsMap.get(coding.code)
+                let mets = fhirStageToCbMetsMap.get(coding.code)
+                const stage = snomedCodeToFhirStageMap.get(coding.code)
+                if(stage && !mets) {
+                  mets = fhirStageToCbMetsMap.get(stage);
+                }
                 if(mets) {
                     for (const met of mets) {
                         const metasValue: CbValueFields = {
