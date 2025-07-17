@@ -1,11 +1,15 @@
-title:	v1.1.1
-tag:	v1.1.1
+title:	v2.0.0
+tag:	v2.0.0
 draft:	false
 prerelease:	false
 author:	crouchcd
-created:	2025-04-22T19:34:27Z
-published:	2025-04-22T19:45:36Z
-url:	https://github.com/EssexManagement/clinical-trial-matching-service-carebox/releases/tag/v1.1.1
+created:	2025-07-17T18:34:30Z
+published:	2025-07-17T18:34:52Z
+url:	https://github.com/EssexManagement/clinical-trial-matching-service-carebox/releases/tag/v2.0.0
 --
-- update npm packages
-**Full Changelog**: https://github.com/EssexManagement/clinical-trial-matching-service-carebox/compare/v1.1.0...v1.1.1
+## What's Changed
+* Run NPM audit to address tar-fs by @crouchcd in https://github.com/EssexManagement/clinical-trial-matching-service-carebox/pull/12
+* Add support related to pancreas and uterine cancer additions by @crouchcd in https://github.com/EssexManagement/clinical-trial-matching-service-carebox/pull/13
+
+
+**Full Changelog**: https://github.com/EssexManagement/clinical-trial-matching-service-carebox/compare/v1.1.1...v2.0.0
