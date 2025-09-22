@@ -80,7 +80,7 @@ export async function getMatches(
 
   if (devCacheClient instanceof DevCacheClient) {
     const key = options.url + options.data;
-    const cached = (await devCacheClient.get(key)) as CbApiResponse;
+    const cached = await devCacheClient.get<CbApiResponse>(key);
     if (cached) {
       return { data: cached, status: 200 };
     }
